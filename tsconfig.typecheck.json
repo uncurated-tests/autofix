@@ -1,0 +1,5 @@
+{
+  "extends": "./tsconfig.json",
+  "include": ["typecheck.failure.ts"],
+  "exclude": ["node_modules"]
+}
