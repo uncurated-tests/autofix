@@ -2,7 +2,7 @@
 
 import React, { createContext, useContext, useEffect, useState } from "react";
 import { Transaction } from "@/lib/types";
-import { generateId, INITIAL_TRANSACTIONS } from "@/lib/data";
+import { DEFAULT_CURRENCY, generateId, INITIAL_TRANSACTIONS } from "@/lib/data";
 
 interface FinanceContextType {
   transactions: Transaction[];
@@ -22,7 +22,8 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
     const stored = localStorage.getItem(STORAGE_KEY);
     if (stored) {
       try {
-        setTransactions(JSON.parse(stored));
+        const parsed = JSON.parse(stored) as Transaction[];
+        setTransactions(parsed.map((t) => ({ ...t, currency: t.currency ?? DEFAULT_CURRENCY })));
       } catch {
         setTransactions(INITIAL_TRANSACTIONS);
       }

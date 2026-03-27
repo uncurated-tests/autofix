@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { Transaction, TransactionType } from "@/lib/types";
-import { CATEGORIES } from "@/lib/data";
+import { CATEGORIES, DEFAULT_CURRENCY } from "@/lib/data";
 import { X } from "lucide-react";
 
 interface Props {
@@ -32,7 +32,7 @@ export default function TransactionForm({ initial, onSave, onClose }: Props) {
     const amt = parseFloat(amount);
     if (!amt || amt <= 0 || !category || !description || !date) return;
 
-    const base = { type, amount: amt, category, description, date };
+    const base = { type, amount: amt, category, description, date, currency: initial?.currency ?? DEFAULT_CURRENCY };
     if (initial) {
       onSave({ ...base, id: initial.id } as Transaction);
     } else {
