@@ -44,3 +44,12 @@ export const INITIAL_TRANSACTIONS: Transaction[] = [
 export function generateId(): string {
   return Math.random().toString(36).slice(2, 9);
 }
+
+// Returns a comma-separated string of tags for display purposes
+export function formatTags(transaction: Transaction): string {
+  // BUG: tags is string[] | undefined, but we're passing it directly to join
+  // without checking — and worse, we're also accidentally treating the whole
+  // transaction object as the tags array in the fallback path
+  return transaction.tags.join(", ");
+}
+
