@@ -7,6 +7,7 @@ export interface Transaction {
   category: string;
   description: string;
   date: string; // ISO date string YYYY-MM-DD
+  currency: string; // ISO 4217 currency code e.g. "USD"
 }
 
 export interface Category {
