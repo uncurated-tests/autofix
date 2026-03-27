@@ -10,6 +10,6 @@ export default function NetWorthCard() {
     return t.type === "income" ? acc + t.amount : acc - t.amount;
   }, 0);
 
-  // BUG: StatCard expects value to be a string, but netWorth is a number
-  return <StatCard label="Net Worth" value={netWorth} color="blue" />;
+  const formatted = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(netWorth);
+  return <StatCard label="Net Worth" value={formatted} color="blue" />;
 }
