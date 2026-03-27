@@ -1,65 +1,170 @@
-import Image from "next/image";
+"use client";
 
-export default function Home() {
+import { useMemo } from "react";
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+  PieChart,
+  Pie,
+  Cell,
+  ResponsiveContainer,
+} from "recharts";
+import { useFinance } from "@/context/FinanceContext";
+import { CATEGORIES } from "@/lib/data";
+import StatCard from "@/components/StatCard";
+
+const MONTH_LABELS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
+function fmt(n: number) {
+  return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(n);
+}
+
+export default function DashboardPage() {
+  const { transactions } = useFinance();
+
+  const { totalIncome, totalExpenses, balance, monthlySummary, expenseByCategory } = useMemo(() => {
+    const now = new Date();
+    const currentMonth = now.getMonth();
+    const currentYear = now.getFullYear();
+
+    let totalIncome = 0;
+    let totalExpenses = 0;
+
+    const monthMap: Record<string, { income: number; expenses: number }> = {};
+    for (let i = 5; i >= 0; i--) {
+      const d = new Date(currentYear, currentMonth - i, 1);
+      const key = `${d.getFullYear()}-${d.getMonth()}`;
+      monthMap[key] = { income: 0, expenses: 0 };
+    }
+
+    const catMap: Record<string, number> = {};
+
+    for (const t of transactions) {
+      const d = new Date(t.date);
+      const key = `${d.getFullYear()}-${d.getMonth()}`;
+
+      if (d.getFullYear() === currentYear && d.getMonth() === currentMonth) {
+        if (t.type === "income") totalIncome += t.amount;
+        else {
+          totalExpenses += t.amount;
+          catMap[t.category] = (catMap[t.category] ?? 0) + t.amount;
+        }
+      }
+
+      if (monthMap[key]) {
+        if (t.type === "income") monthMap[key].income += t.amount;
+        else monthMap[key].expenses += t.amount;
+      }
+    }
+
+    const monthlySummary = Object.entries(monthMap).map(([key, val]) => {
+      const [year, month] = key.split("-").map(Number);
+      return { month: MONTH_LABELS[month], ...val };
+    });
+
+    const expenseByCategory = Object.entries(catMap)
+      .map(([name, value]) => ({ name, value }))
+      .sort((a, b) => b.value - a.value);
+
+    return { totalIncome, totalExpenses, balance: totalIncome - totalExpenses, monthlySummary, expenseByCategory };
+  }, [transactions]);
+
+  const getCategoryColor = (name: string) =>
+    CATEGORIES.find((c) => c.name === name)?.color ?? "#94a3b8";
+
+  const recentTransactions = transactions.slice(0, 5);
+
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
+    <div className="space-y-8 max-w-6xl">
+      <div>
+        <h1 className="text-2xl font-bold text-gray-800">Dashboard</h1>
+        <p className="text-sm text-gray-500 mt-1">Overview for this month</p>
+      </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <StatCard label="Total Income" value={fmt(totalIncome)} color="green" />
+        <StatCard label="Total Expenses" value={fmt(totalExpenses)} color="red" />
+        <StatCard
+          label="Balance"
+          value={fmt(balance)}
+          sub={balance >= 0 ? "You're in the black" : "You're overspending"}
+          color={balance >= 0 ? "blue" : "red"}
         />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="bg-white rounded-xl border border-gray-200 p-5">
+          <h2 className="text-sm font-semibold text-gray-700 mb-4">Income vs Expenses (6 months)</h2>
+          <ResponsiveContainer width="100%" height={220}>
+            <BarChart data={monthlySummary} margin={{ top: 0, right: 0, left: -10, bottom: 0 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+              <XAxis dataKey="month" tick={{ fontSize: 12 }} />
+              <YAxis tick={{ fontSize: 12 }} tickFormatter={(v) => `$${v}`} />
+              <Tooltip formatter={(v) => fmt(Number(v))} />
+              <Legend />
+              <Bar dataKey="income" fill="#22c55e" radius={[4, 4, 0, 0]} name="Income" />
+              <Bar dataKey="expenses" fill="#f97316" radius={[4, 4, 0, 0]} name="Expenses" />
+            </BarChart>
+          </ResponsiveContainer>
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
+
+        <div className="bg-white rounded-xl border border-gray-200 p-5">
+          <h2 className="text-sm font-semibold text-gray-700 mb-4">Expenses by Category (this month)</h2>
+          {expenseByCategory.length === 0 ? (
+            <p className="text-sm text-gray-400 mt-16 text-center">No expense data</p>
+          ) : (
+            <ResponsiveContainer width="100%" height={220}>
+              <PieChart>
+                <Pie
+                  data={expenseByCategory}
+                  cx="50%"
+                  cy="50%"
+                  innerRadius={55}
+                  outerRadius={90}
+                  paddingAngle={3}
+                  dataKey="value"
+                >
+                  {expenseByCategory.map((entry) => (
+                    <Cell key={entry.name} fill={getCategoryColor(entry.name)} />
+                  ))}
+                </Pie>
+                <Tooltip formatter={(v) => fmt(Number(v))} />
+                <Legend />
+              </PieChart>
+            </ResponsiveContainer>
+          )}
         </div>
-      </main>
+      </div>
+
+      <div className="bg-white rounded-xl border border-gray-200 p-5">
+        <h2 className="text-sm font-semibold text-gray-700 mb-4">Recent Transactions</h2>
+        {recentTransactions.length === 0 ? (
+          <p className="text-sm text-gray-400">No transactions yet.</p>
+        ) : (
+          <ul className="divide-y divide-gray-100">
+            {recentTransactions.map((t) => (
+              <li key={t.id} className="flex items-center justify-between py-3">
+                <div>
+                  <p className="text-sm font-medium text-gray-800">{t.description}</p>
+                  <p className="text-xs text-gray-400">{t.category} · {t.date}</p>
+                </div>
+                <span
+                  className={`text-sm font-semibold ${
+                    t.type === "income" ? "text-emerald-600" : "text-red-500"
+                  }`}
+                >
+                  {t.type === "income" ? "+" : "-"}{fmt(t.amount)}
+                </span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
     </div>
   );
 }
