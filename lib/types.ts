@@ -7,6 +7,7 @@ export interface Transaction {
   category: string;
   description: string;
   date: string; // ISO date string YYYY-MM-DD
+  tags?: string[]; // optional tags for filtering
 }
 
 export interface Category {
